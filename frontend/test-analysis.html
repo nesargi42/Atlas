@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Analysis</title>
+</head>
+<body>
+    <h1>Test Analysis Functionality</h1>
+    <button onclick="addTestCompanies()">Add Test Companies</button>
+    <button onclick="testAnalysis()">Test Analysis</button>
+    <div id="result"></div>
+
+    <script>
+        function addTestCompanies() {
+            const testCompanies = [
+                {
+                    id: 'AAPL',
+                    name: 'Apple Inc.',
+                    ticker: 'AAPL',
+                    domainTags: ['technology', 'consumer electronics'],
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                },
+                {
+                    id: 'PFE',
+                    name: 'Pfizer Inc.',
+                    ticker: 'PFE',
+                    domainTags: ['pharmaceuticals', 'healthcare'],
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                },
+                {
+                    id: 'MRNA',
+                    name: 'Moderna Inc.',
+                    ticker: 'MRNA',
+                    domainTags: ['biotechnology', 'vaccines'],
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                }
+            ];
+            
+            localStorage.setItem('selectedCompanies', JSON.stringify(testCompanies));
+            document.getElementById('result').innerHTML = '<p>Test companies added to localStorage!</p>';
+            console.log('Test companies added:', testCompanies);
+        }
+
+        function testAnalysis() {
+            const companies = JSON.parse(localStorage.getItem('selectedCompanies') || '[]');
+            document.getElementById('result').innerHTML = '<p>Companies in localStorage: ' + companies.length + '</p><pre>' + JSON.stringify(companies, null, 2) + '</pre>';
+        }
+    </script>
+</body>
+</html>
+
+

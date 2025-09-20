@@ -1,0 +1,71 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Company {
+  id          String   @id @default(cuid())
+  name        String
+  ticker      String?  @unique
+  domainTags  String   // JSON string of domain tags
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  runs        Run[]
+  userNotes   UserNote[]
+
+  @@index([ticker])
+  @@index([name])
+}
+
+model EvaluationProfile {
+  id        String   @id @default(cuid())
+  name      String
+  weights   String   // JSON string of weights configuration
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  runs Run[]
+
+  @@index([name])
+}
+
+model Run {
+  id        String   @id @default(cuid())
+  profileId String
+  companyId String
+  inputs    String   // JSON string of input data
+  outputs   String   // JSON string of output data (x_maturity, y_diff, explanation)
+  createdAt DateTime @default(now())
+
+  // Relations
+  profile EvaluationProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  company Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+  @@index([companyId])
+  @@index([createdAt])
+}
+
+model UserNote {
+  id        String   @id @default(cuid())
+  companyId String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([createdAt])
+}
