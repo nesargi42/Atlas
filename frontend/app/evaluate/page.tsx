@@ -12,6 +12,7 @@ import { CompanyList } from '@/components/CompanyList'
 import { FinancialMetrics } from '@/components/FinancialMetrics'
 import { InDepthAnalysis } from '@/components/InDepthAnalysis'
 import { MaturityDifferentiationChart } from '@/components/MaturityDifferentiationChart'
+import EvaluationNavigation from '@/components/EvaluationNavigation'
 import { backendService } from '@/lib/backend-service'
 import { Company, CompanyAnalysis, EvaluationCriteria } from '@/lib/types'
 import { calculateFocusAreaFit } from '@/lib/utils'
@@ -24,6 +25,7 @@ export default function EvaluatePage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [showCriteria, setShowCriteria] = useState(false)
   const [showFinancialMetrics, setShowFinancialMetrics] = useState(true)
+  const [activeSection, setActiveSection] = useState('select-company')
 
   console.log('EvaluatePage rendered, selectedCompanies:', selectedCompanies.length)
 
@@ -64,103 +66,216 @@ export default function EvaluatePage() {
     router.push('/results')
   }
 
-  return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Building2 className="h-8 w-8 text-primary" />
-              <h1 className="text-2xl font-bold">Atlas</h1>
+  const renderSection = () => {
+    switch (activeSection) {
+      case 'select-company':
+        return (
+          <div className="space-y-6">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold mb-4">Select Companies</h2>
+              <p className="text-lg text-muted-foreground">
+                Search and select companies for analysis
+              </p>
             </div>
-            <Button variant="outline" onClick={() => router.push('/')}>
-              Back to Home
-            </Button>
+            <CompanyList onCompaniesChange={handleCompanyListChange} />
+            
+            {selectedCompanies.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <BarChart3 className="h-5 w-5" />
+                    Selected Companies ({selectedCompanies.length})
+                  </CardTitle>
+                  <CardDescription>
+                    Companies ready for analysis
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4">
+                    {selectedCompanies.map((company) => (
+                      <CompanyCard
+                        key={company.id}
+                        company={company}
+                        isSelected={true}
+                        onSelect={() => {}} // Disable selection changes here
+                      />
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
-        </div>
-      </header>
+        )
 
-      <main className="container mx-auto px-4 py-8">
-        <div className="max-w-6xl mx-auto">
-          {/* Page Title */}
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold mb-4">Company Evaluation</h1>
-            <p className="text-lg text-muted-foreground">
-              Analyze companies from Financial Metrics using in-depth criteria
-            </p>
-          </div>
-
-          {/* Company List Management */}
-          <CompanyList onCompaniesChange={handleCompanyListChange} />
-
-          {/* Financial Metrics Section - Always show when companies are selected */}
-          {selectedCompanies.length > 0 && (
-            <div className="mb-8">
+      case 'financial-metrics':
+        return (
+          <div className="space-y-6">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold mb-4">Financial Metrics</h2>
+              <p className="text-lg text-muted-foreground">
+                Detailed financial analysis of selected companies
+              </p>
+            </div>
+            {selectedCompanies.length > 0 ? (
               <FinancialMetrics companies={selectedCompanies} />
-            </div>
-          )}
+            ) : (
+              <Card>
+                <CardContent className="text-center py-8">
+                  <p className="text-muted-foreground">Please select companies first to view financial metrics.</p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )
 
-          {/* Maturity vs Differentiation Chart - Show when analysis is complete */}
-          {companyAnalyses.length > 0 && (
-            <div className="mb-8">
-              <MaturityDifferentiationChart analyses={companyAnalyses} />
+      case 'analysis-criteria':
+        return (
+          <div className="space-y-6">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold mb-4">Analysis Criteria</h2>
+              <p className="text-lg text-muted-foreground">
+                Configure analysis parameters and weights
+              </p>
             </div>
-          )}
-
-          {/* In-Depth Analysis Section */}
-          {selectedCompanies.length > 0 && (
-            <div className="mb-8">
+            {selectedCompanies.length > 0 ? (
               <InDepthAnalysis 
                 companies={selectedCompanies} 
                 onAnalysisComplete={handleInDepthAnalysisComplete}
               />
+            ) : (
+              <Card>
+                <CardContent className="text-center py-8">
+                  <p className="text-muted-foreground">Please select companies first to configure analysis criteria.</p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )
+
+      case 'analysis-summary':
+        return (
+          <div className="space-y-6">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold mb-4">Analysis Summary</h2>
+              <p className="text-lg text-muted-foreground">
+                Overview of analysis results and next steps
+              </p>
             </div>
-          )}
+            {companyAnalyses.length > 0 ? (
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Analysis Complete</CardTitle>
+                    <CardDescription>
+                      Analysis has been completed for {companyAnalyses.length} companies
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      You can now view the Maturity vs. Differentiation chart and Comparison Matrix.
+                    </p>
+                    <Button onClick={() => setActiveSection('maturity-differentiation')}>
+                      View Maturity vs. Differentiation Analysis
+                    </Button>
+                  </CardContent>
+                </Card>
+                
+                {showCriteria && (
+                  <CriteriaForm
+                    onComplete={handleEvaluationComplete}
+                    companyCount={companyAnalyses.length}
+                  />
+                )}
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="text-center py-8">
+                  <p className="text-muted-foreground">Please run the analysis first to view the summary.</p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )
 
-          {/* Selected Companies Summary */}
-          {selectedCompanies.length > 0 && (
-            <Card className="mb-8">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5" />
-                  Selected Companies ({selectedCompanies.length})
-                </CardTitle>
-                <CardDescription>
-                  Companies from Financial Metrics ready for analysis
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4">
-                  {selectedCompanies.map((company) => (
-                    <CompanyCard
-                      key={company.id}
-                      company={company}
-                      isSelected={true}
-                      onSelect={() => {}} // Disable selection changes here
-                    />
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+      case 'maturity-differentiation':
+        return (
+          <div className="space-y-6">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold mb-4">Maturity vs. Differentiation Analysis</h2>
+              <p className="text-lg text-muted-foreground">
+                Visual analysis of company maturity and differentiation scores
+              </p>
+            </div>
+            {companyAnalyses.length > 0 ? (
+              <MaturityDifferentiationChart analyses={companyAnalyses} />
+            ) : (
+              <Card>
+                <CardContent className="text-center py-8">
+                  <p className="text-muted-foreground">Please complete the analysis first to view the maturity vs. differentiation chart.</p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )
 
-          {/* Comparison Matrix */}
-          {companyAnalyses.length > 0 && (
-            <div className="mb-8">
+      case 'comparison-matrix':
+        return (
+          <div className="space-y-6">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold mb-4">Comparison Matrix</h2>
+              <p className="text-lg text-muted-foreground">
+                Side-by-side comparison of all analyzed companies
+              </p>
+            </div>
+            {companyAnalyses.length > 0 ? (
               <ComparisonMatrix analyses={companyAnalyses} />
-            </div>
-          )}
+            ) : (
+              <Card>
+                <CardContent className="text-center py-8">
+                  <p className="text-muted-foreground">Please complete the analysis first to view the comparison matrix.</p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )
 
-          {/* Evaluation Criteria Form */}
-          {showCriteria && companyAnalyses.length > 0 && (
-            <CriteriaForm
-              onComplete={handleEvaluationComplete}
-              companyCount={companyAnalyses.length}
-            />
-          )}
-        </div>
-      </main>
+      default:
+        return null
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-background flex">
+      {/* Sidebar Navigation */}
+      <EvaluationNavigation 
+        activeSection={activeSection}
+        onSectionChange={setActiveSection}
+        hasAnalysisResults={companyAnalyses.length > 0}
+      />
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col">
+        {/* Header */}
+        <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold">Company Evaluation</h1>
+                <p className="text-sm text-muted-foreground">
+                  Analyze pharmaceutical companies using advanced metrics
+                </p>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Content Area */}
+        <main className="flex-1 p-6 overflow-auto">
+          <div className="max-w-6xl mx-auto">
+            {renderSection()}
+          </div>
+        </main>
+      </div>
     </div>
   )
 }
