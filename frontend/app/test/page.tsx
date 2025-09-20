@@ -18,7 +18,7 @@ export default function TestPage() {
       setResult(data)
     } catch (error) {
       console.error('Backend error:', error)
-      setResult({ error: error.message })
+      setResult({ error: error instanceof Error ? error.message : 'Unknown error' })
     } finally {
       setLoading(false)
     }
@@ -34,7 +34,7 @@ export default function TestPage() {
       setResult(data)
     } catch (error) {
       console.error('Frontend API error:', error)
-      setResult({ error: error.message })
+      setResult({ error: error instanceof Error ? error.message : 'Unknown error' })
     } finally {
       setLoading(false)
     }

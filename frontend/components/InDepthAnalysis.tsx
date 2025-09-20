@@ -18,6 +18,227 @@ import {
 import { Company, CompanyAnalysis } from '@/lib/types'
 import { backendService } from '@/lib/backend-service'
 
+// Create company-specific mock financial data (fallback)
+const getMockFinancialData = (ticker: string) => {
+  const baseData = {
+    company_name: '', // Will be set in switch statement
+    sector: '',
+    industry: '',
+    employees: 0,
+    price: 0,
+    market_cap: 0,
+    beta: 0,
+    volume: 0,
+    average_volume: 0,
+    revenue: 0,
+    net_income: 0,
+    eps: 0,
+    eps_diluted: 0,
+    pe_ratio: 0,
+    total_debt: 0,
+    cash: 0,
+    enterprise_value: 0,
+    rd_expense: 0,
+    gross_profit: 0,
+    operating_income: 0,
+    ebitda: 0,
+    ebit: 0,
+    cagr: 0
+  }
+
+  switch (ticker.toUpperCase()) {
+    case 'PFE':
+      return {
+        ...baseData,
+        company_name: 'Pfizer Inc.',
+        sector: 'Healthcare',
+        industry: 'Drug Manufacturers - General',
+        employees: 81000,
+        price: 24.54,
+        market_cap: 139523397000,
+        beta: 0.44,
+        volume: 40849330,
+        average_volume: 40776300,
+        revenue: 63627000000,
+        net_income: 8020000000,
+        eps: 1.42,
+        eps_diluted: 1.41,
+        pe_ratio: 17.31,
+        total_debt: 63649000000,
+        cash: 12300000000,
+        enterprise_value: 191000000000,
+        rd_expense: 11400000000,
+        gross_profit: 45000000000,
+        operating_income: 12000000000,
+        ebitda: 15000000000,
+        ebit: 12000000000,
+        cagr: 0.08
+      }
+    case 'JNJ':
+      return {
+        ...baseData,
+        company_name: 'Johnson & Johnson',
+        sector: 'Healthcare',
+        industry: 'Drug Manufacturers - General',
+        employees: 152700,
+        price: 156.78,
+        market_cap: 413000000000,
+        beta: 0.65,
+        volume: 8500000,
+        average_volume: 8500000,
+        revenue: 94943000000,
+        net_income: 17740000000,
+        eps: 6.73,
+        eps_diluted: 6.73,
+        pe_ratio: 23.28,
+        total_debt: 32000000000,
+        cash: 25000000000,
+        enterprise_value: 420000000000,
+        rd_expense: 14600000000,
+        gross_profit: 65000000000,
+        operating_income: 25000000000,
+        ebitda: 30000000000,
+        ebit: 25000000000,
+        cagr: 0.05
+      }
+    case 'MRNA':
+      return {
+        ...baseData,
+        company_name: 'Moderna Inc.',
+        sector: 'Healthcare',
+        industry: 'Biotechnology',
+        employees: 3900,
+        price: 89.45,
+        market_cap: 34000000000,
+        beta: 1.85,
+        volume: 12000000,
+        average_volume: 12000000,
+        revenue: 18470000000,
+        net_income: 8360000000,
+        eps: 20.69,
+        eps_diluted: 20.69,
+        pe_ratio: 4.32,
+        total_debt: 1200000000,
+        cash: 18000000000,
+        enterprise_value: 16000000000,
+        rd_expense: 3200000000,
+        gross_profit: 15000000000,
+        operating_income: 10000000000,
+        ebitda: 12000000000,
+        ebit: 10000000000,
+        cagr: 0.25
+      }
+    case 'GILD':
+      return {
+        ...baseData,
+        company_name: 'Gilead Sciences Inc.',
+        sector: 'Healthcare',
+        industry: 'Biotechnology',
+        employees: 14000,
+        price: 67.23,
+        market_cap: 85000000000,
+        beta: 0.75,
+        volume: 6000000,
+        average_volume: 6000000,
+        revenue: 27000000000,
+        net_income: 5000000000,
+        eps: 3.95,
+        eps_diluted: 3.95,
+        pe_ratio: 17.02,
+        total_debt: 22000000000,
+        cash: 8000000000,
+        enterprise_value: 99000000000,
+        rd_expense: 5000000000,
+        gross_profit: 22000000000,
+        operating_income: 8000000000,
+        ebitda: 10000000000,
+        ebit: 8000000000,
+        cagr: 0.12
+      }
+    case 'AMGN':
+      return {
+        ...baseData,
+        company_name: 'Amgen Inc.',
+        sector: 'Healthcare',
+        industry: 'Biotechnology',
+        employees: 25000,
+        price: 245.67,
+        market_cap: 130000000000,
+        beta: 0.85,
+        volume: 2000000,
+        average_volume: 2000000,
+        revenue: 26000000000,
+        net_income: 7000000000,
+        eps: 12.50,
+        eps_diluted: 12.50,
+        pe_ratio: 19.65,
+        total_debt: 35000000000,
+        cash: 10000000000,
+        enterprise_value: 155000000000,
+        rd_expense: 4500000000,
+        gross_profit: 20000000000,
+        operating_income: 10000000000,
+        ebitda: 12000000000,
+        ebit: 10000000000,
+        cagr: 0.08
+      }
+    case 'BIIB':
+      return {
+        ...baseData,
+        company_name: 'Biogen Inc.',
+        sector: 'Healthcare',
+        industry: 'Biotechnology',
+        employees: 9000,
+        price: 234.56,
+        market_cap: 35000000000,
+        beta: 1.15,
+        volume: 1500000,
+        average_volume: 1500000,
+        revenue: 10000000000,
+        net_income: 2000000000,
+        eps: 13.50,
+        eps_diluted: 13.50,
+        pe_ratio: 17.37,
+        total_debt: 6000000000,
+        cash: 3000000000,
+        enterprise_value: 38000000000,
+        rd_expense: 2500000000,
+        gross_profit: 8000000000,
+        operating_income: 3000000000,
+        ebitda: 4000000000,
+        ebit: 3000000000,
+        cagr: 0.15
+      }
+    default:
+      return {
+        ...baseData,
+        company_name: 'Generic Pharma Company',
+        sector: 'Healthcare',
+        industry: 'Pharmaceuticals',
+        employees: 10000,
+        price: 50.00,
+        market_cap: 50000000000,
+        beta: 1.0,
+        volume: 1000000,
+        average_volume: 1000000,
+        revenue: 5000000000,
+        net_income: 500000000,
+        eps: 2.50,
+        eps_diluted: 2.50,
+        pe_ratio: 20.0,
+        total_debt: 10000000000,
+        cash: 2000000000,
+        enterprise_value: 58000000000,
+        rd_expense: 1000000000,
+        gross_profit: 4000000000,
+        operating_income: 1000000000,
+        ebitda: 1500000000,
+        ebit: 1000000000,
+        cagr: 0.1
+      }
+  }
+}
+
 interface InDepthAnalysisProps {
   companies: Company[]
   onAnalysisComplete: (analyses: CompanyAnalysis[]) => void
