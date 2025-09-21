@@ -242,6 +242,9 @@ const getMockFinancialData = (ticker: string) => {
 interface InDepthAnalysisProps {
   companies: Company[]
   onAnalysisComplete: (analyses: CompanyAnalysis[]) => void
+  onAnalysisStart?: () => void
+  onAnalysisError?: (error: unknown) => void
+  onAnalysisFinished?: () => void
 }
 
 interface AnalysisCriteria {
@@ -254,7 +257,7 @@ interface AnalysisCriteria {
   rdExpense: number
 }
 
-export function InDepthAnalysis({ companies, onAnalysisComplete }: InDepthAnalysisProps) {
+export function InDepthAnalysis({ companies, onAnalysisComplete, onAnalysisStart, onAnalysisError, onAnalysisFinished }: InDepthAnalysisProps) {
   const [criteria, setCriteria] = useState<AnalysisCriteria>({
     partnerships: 50,
     croCapabilities: 50,
@@ -275,6 +278,7 @@ export function InDepthAnalysis({ companies, onAnalysisComplete }: InDepthAnalys
     }
 
     console.log('Starting analysis for companies:', companies)
+    onAnalysisStart?.()
     setIsAnalyzing(true)
     try {
       const companyAnalyses: CompanyAnalysis[] = []
@@ -657,8 +661,10 @@ export function InDepthAnalysis({ companies, onAnalysisComplete }: InDepthAnalys
       onAnalysisComplete(companyAnalyses)
     } catch (error) {
       console.error('Error analyzing companies:', error)
+      onAnalysisError?.(error)
     } finally {
       setIsAnalyzing(false)
+      onAnalysisFinished?.()
     }
   }
 

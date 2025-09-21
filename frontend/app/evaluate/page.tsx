@@ -1,10 +1,17 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Building2, TrendingUp, BarChart3, ArrowRight } from 'lucide-react'
+import {
+  Search,
+  TrendingUp,
+  Settings,
+  FileText,
+  BarChart3,
+  Grid3X3
+} from 'lucide-react'
 import { CompanyCard } from '@/components/CompanyCard'
 import { ComparisonMatrix } from '@/components/ComparisonMatrix'
 import { CriteriaForm } from '@/components/CriteriaForm'
@@ -12,83 +19,156 @@ import { CompanyList } from '@/components/CompanyList'
 import { FinancialMetrics } from '@/components/FinancialMetrics'
 import { InDepthAnalysis } from '@/components/InDepthAnalysis'
 import { MaturityDifferentiationChart } from '@/components/MaturityDifferentiationChart'
-import EvaluationNavigation from '@/components/EvaluationNavigation'
-import { backendService } from '@/lib/backend-service'
+import EvaluationNavigation, { EvaluationNavigationItem } from '@/components/EvaluationNavigation'
 import { Company, CompanyAnalysis, EvaluationCriteria } from '@/lib/types'
-import { calculateFocusAreaFit } from '@/lib/utils'
+
+type AnalysisStatus = 'idle' | 'running' | 'completed' | 'error'
 
 export default function EvaluatePage() {
-  const searchParams = useSearchParams()
   const router = useRouter()
   const [selectedCompanies, setSelectedCompanies] = useState<Company[]>([])
   const [companyAnalyses, setCompanyAnalyses] = useState<CompanyAnalysis[]>([])
-  const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [analysisStatus, setAnalysisStatus] = useState<AnalysisStatus>('idle')
+  const [analysisError, setAnalysisError] = useState<string | null>(null)
   const [showCriteria, setShowCriteria] = useState(false)
-  const [showFinancialMetrics, setShowFinancialMetrics] = useState(true)
   const [activeSection, setActiveSection] = useState('select-company')
 
-  console.log('EvaluatePage rendered, selectedCompanies:', selectedCompanies.length)
-
-  // Load companies from Financial Metrics page (stored in localStorage)
+  // Load companies that may have been selected earlier
   useEffect(() => {
     const savedCompanies = localStorage.getItem('selectedCompanies')
-    console.log('Loading companies from localStorage:', savedCompanies)
     if (savedCompanies) {
       try {
-        const companies = JSON.parse(savedCompanies)
-        console.log('Parsed companies:', companies)
-        setSelectedCompanies(companies)
+        const parsed = JSON.parse(savedCompanies)
+        if (Array.isArray(parsed)) {
+          setSelectedCompanies(parsed)
+        }
       } catch (error) {
         console.error('Error loading saved companies:', error)
       }
-    } else {
-      console.log('No companies found in localStorage')
     }
   }, [])
 
   const handleCompanyListChange = useCallback((companies: Company[]) => {
     setSelectedCompanies(companies)
-    // Save to localStorage for persistence
+    setCompanyAnalyses([])
+    setShowCriteria(false)
+    setAnalysisStatus('idle')
+    setAnalysisError(null)
+    if (companies.length === 0) {
+      setActiveSection('select-company')
+    }
     localStorage.setItem('selectedCompanies', JSON.stringify(companies))
   }, [])
 
-  const handleInDepthAnalysisComplete = (analyses: CompanyAnalysis[]) => {
+  const handleAnalysisStart = useCallback(() => {
+    setAnalysisStatus('running')
+    setAnalysisError(null)
+    if (activeSection !== 'analysis-criteria') {
+      setActiveSection('analysis-criteria')
+    }
+  }, [activeSection])
+
+  const handleAnalysisError = useCallback((error: unknown) => {
+    const message = error instanceof Error ? error.message : 'Analysis failed. Please try again.'
+    setAnalysisError(message)
+    setAnalysisStatus('error')
+    setActiveSection('analysis-summary')
+  }, [])
+
+  const handleInDepthAnalysisComplete = useCallback((analyses: CompanyAnalysis[]) => {
     setCompanyAnalyses(analyses)
     setShowCriteria(true)
-  }
+    setAnalysisStatus('completed')
+    setActiveSection('analysis-summary')
+  }, [])
 
   const handleEvaluationComplete = (criteria: EvaluationCriteria) => {
-    // Store data in localStorage for results page
     localStorage.setItem('companyAnalyses', JSON.stringify(companyAnalyses))
     localStorage.setItem('evaluationCriteria', JSON.stringify(criteria))
-    
-    // Navigate to results page
     router.push('/results')
   }
+
+  const navigationItems = useMemo<EvaluationNavigationItem[]>(() => {
+    const hasCompanies = selectedCompanies.length > 0
+    const hasResults = companyAnalyses.length > 0
+
+    return [
+      {
+        id: 'select-company',
+        label: 'Company Selection',
+        icon: Search,
+        status: hasCompanies ? 'ready' : undefined
+      },
+      {
+        id: 'financial-metrics',
+        label: 'Financial Metrics',
+        icon: TrendingUp,
+        disabled: !hasCompanies,
+        status: hasCompanies ? 'ready' : undefined
+      },
+      {
+        id: 'analysis-criteria',
+        label: 'Analysis Settings',
+        icon: Settings,
+        disabled: !hasCompanies,
+        status:
+          analysisStatus === 'running'
+            ? 'in-progress'
+            : hasCompanies && analysisStatus === 'completed'
+            ? 'ready'
+            : undefined
+      },
+      {
+        id: 'analysis-summary',
+        label: 'Analysis Summary',
+        icon: FileText,
+        disabled: !hasResults && analysisStatus !== 'running' && analysisStatus !== 'error',
+        status:
+          analysisStatus === 'running'
+            ? 'in-progress'
+            : analysisStatus === 'error'
+            ? 'error'
+            : hasResults
+            ? 'ready'
+            : undefined
+      },
+      {
+        id: 'maturity-differentiation',
+        label: 'Maturity vs. Differentiation',
+        icon: BarChart3,
+        disabled: !hasResults,
+        status: hasResults ? 'ready' : undefined
+      },
+      {
+        id: 'comparison-matrix',
+        label: 'Comparison Matrix',
+        icon: Grid3X3,
+        disabled: !hasResults,
+        status: hasResults ? 'ready' : undefined
+      }
+    ]
+  }, [selectedCompanies.length, companyAnalyses.length, analysisStatus])
 
   const renderSection = () => {
     switch (activeSection) {
       case 'select-company':
         return (
           <div className="space-y-6">
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold mb-4">Select Companies</h2>
+            <div className="mb-8">
+              <h2 className="text-3xl font-bold mb-2">Company Selection</h2>
               <p className="text-lg text-muted-foreground">
-                Search and select companies for analysis
+                Search and curate the companies you want to evaluate.
               </p>
             </div>
             <CompanyList onCompaniesChange={handleCompanyListChange} />
-            
+
             {selectedCompanies.length > 0 && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <BarChart3 className="h-5 w-5" />
                     Selected Companies ({selectedCompanies.length})
                   </CardTitle>
-                  <CardDescription>
-                    Companies ready for analysis
-                  </CardDescription>
+                  <CardDescription>Companies currently queued for analysis</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="grid gap-4">
@@ -96,8 +176,8 @@ export default function EvaluatePage() {
                       <CompanyCard
                         key={company.id}
                         company={company}
-                        isSelected={true}
-                        onSelect={() => {}} // Disable selection changes here
+                        isSelected
+                        onSelect={() => {}}
                       />
                     ))}
                   </div>
@@ -110,18 +190,20 @@ export default function EvaluatePage() {
       case 'financial-metrics':
         return (
           <div className="space-y-6">
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold mb-4">Financial Metrics</h2>
+            <div className="mb-8">
+              <h2 className="text-3xl font-bold mb-2">Financial Metrics</h2>
               <p className="text-lg text-muted-foreground">
-                Detailed financial analysis of selected companies
+                Review performance indicators across revenue, profitability, and growth.
               </p>
             </div>
             {selectedCompanies.length > 0 ? (
               <FinancialMetrics companies={selectedCompanies} />
             ) : (
               <Card>
-                <CardContent className="text-center py-8">
-                  <p className="text-muted-foreground">Please select companies first to view financial metrics.</p>
+                <CardContent className="text-center py-12">
+                  <p className="text-muted-foreground">
+                    Add companies in the selection panel to unlock financial metrics.
+                  </p>
                 </CardContent>
               </Card>
             )}
@@ -131,21 +213,25 @@ export default function EvaluatePage() {
       case 'analysis-criteria':
         return (
           <div className="space-y-6">
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold mb-4">Analysis Criteria</h2>
+            <div className="mb-8">
+              <h2 className="text-3xl font-bold mb-2">Analysis Settings</h2>
               <p className="text-lg text-muted-foreground">
-                Configure analysis parameters and weights
+                Fine-tune the weighting for maturity, differentiation, and strategic fit before running the evaluation.
               </p>
             </div>
             {selectedCompanies.length > 0 ? (
-              <InDepthAnalysis 
-                companies={selectedCompanies} 
+              <InDepthAnalysis
+                companies={selectedCompanies}
+                onAnalysisStart={handleAnalysisStart}
+                onAnalysisError={handleAnalysisError}
                 onAnalysisComplete={handleInDepthAnalysisComplete}
               />
             ) : (
               <Card>
-                <CardContent className="text-center py-8">
-                  <p className="text-muted-foreground">Please select companies first to configure analysis criteria.</p>
+                <CardContent className="text-center py-12">
+                  <p className="text-muted-foreground">
+                    Select at least one company to enable analysis settings.
+                  </p>
                 </CardContent>
               </Card>
             )}
@@ -155,31 +241,61 @@ export default function EvaluatePage() {
       case 'analysis-summary':
         return (
           <div className="space-y-6">
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold mb-4">Analysis Summary</h2>
+            <div className="mb-8">
+              <h2 className="text-3xl font-bold mb-2">Analysis Summary</h2>
               <p className="text-lg text-muted-foreground">
-                Overview of analysis results and next steps
+                Track the status of the evaluation and prepare for next steps.
               </p>
             </div>
-            {companyAnalyses.length > 0 ? (
+
+            {analysisStatus === 'running' && (
+              <Card>
+                <CardContent className="py-12">
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin"></div>
+                    <div className="text-center">
+                      <p className="font-semibold">Running company evaluation</p>
+                      <p className="text-sm text-muted-foreground">Hang tight?this can take a few moments.</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {analysisStatus === 'error' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Analysis failed</CardTitle>
+                  <CardDescription>Something went wrong while generating the insights.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-destructive mb-4">{analysisError}</p>
+                  <Button onClick={() => setActiveSection('analysis-criteria')} variant="outline">
+                    Try again
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
+            {companyAnalyses.length > 0 && analysisStatus === 'completed' && (
               <div className="space-y-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Analysis Complete</CardTitle>
+                    <CardTitle>Evaluation complete</CardTitle>
                     <CardDescription>
-                      Analysis has been completed for {companyAnalyses.length} companies
+                      We generated insights for {companyAnalyses.length} companies. Jump into the visualizations or proceed to scoring.
                     </CardDescription>
                   </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      You can now view the Maturity vs. Differentiation chart and Comparison Matrix.
-                    </p>
+                  <CardContent className="flex flex-wrap gap-3">
                     <Button onClick={() => setActiveSection('maturity-differentiation')}>
-                      View Maturity vs. Differentiation Analysis
+                      View maturity vs. differentiation
+                    </Button>
+                    <Button variant="outline" onClick={() => setActiveSection('comparison-matrix')}>
+                      Open comparison matrix
                     </Button>
                   </CardContent>
                 </Card>
-                
+
                 {showCriteria && (
                   <CriteriaForm
                     onComplete={handleEvaluationComplete}
@@ -187,10 +303,12 @@ export default function EvaluatePage() {
                   />
                 )}
               </div>
-            ) : (
+            )}
+
+            {analysisStatus === 'idle' && companyAnalyses.length === 0 && (
               <Card>
-                <CardContent className="text-center py-8">
-                  <p className="text-muted-foreground">Please run the analysis first to view the summary.</p>
+                <CardContent className="py-12 text-center text-muted-foreground">
+                  Run the analysis from the settings panel to generate a summary.
                 </CardContent>
               </Card>
             )}
@@ -200,18 +318,18 @@ export default function EvaluatePage() {
       case 'maturity-differentiation':
         return (
           <div className="space-y-6">
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold mb-4">Maturity vs. Differentiation Analysis</h2>
+            <div className="mb-8">
+              <h2 className="text-3xl font-bold mb-2">Maturity vs. Differentiation</h2>
               <p className="text-lg text-muted-foreground">
-                Visual analysis of company maturity and differentiation scores
+                Visualize where each company lands on the maturity and differentiation spectrum.
               </p>
             </div>
             {companyAnalyses.length > 0 ? (
               <MaturityDifferentiationChart analyses={companyAnalyses} />
             ) : (
               <Card>
-                <CardContent className="text-center py-8">
-                  <p className="text-muted-foreground">Please complete the analysis first to view the maturity vs. differentiation chart.</p>
+                <CardContent className="py-12 text-center text-muted-foreground">
+                  Complete the analysis to display this chart.
                 </CardContent>
               </Card>
             )}
@@ -221,18 +339,18 @@ export default function EvaluatePage() {
       case 'comparison-matrix':
         return (
           <div className="space-y-6">
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold mb-4">Comparison Matrix</h2>
+            <div className="mb-8">
+              <h2 className="text-3xl font-bold mb-2">Comparison Matrix</h2>
               <p className="text-lg text-muted-foreground">
-                Side-by-side comparison of all analyzed companies
+                Compare companies side-by-side across the dimensions you just evaluated.
               </p>
             </div>
             {companyAnalyses.length > 0 ? (
               <ComparisonMatrix analyses={companyAnalyses} />
             ) : (
               <Card>
-                <CardContent className="text-center py-8">
-                  <p className="text-muted-foreground">Please complete the analysis first to view the comparison matrix.</p>
+                <CardContent className="py-12 text-center text-muted-foreground">
+                  Complete the analysis to unlock the comparison matrix.
                 </CardContent>
               </Card>
             )}
@@ -246,32 +364,28 @@ export default function EvaluatePage() {
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Sidebar Navigation */}
-      <EvaluationNavigation 
+      <EvaluationNavigation
         activeSection={activeSection}
         onSectionChange={setActiveSection}
-        hasAnalysisResults={companyAnalyses.length > 0}
+        items={navigationItems}
       />
 
-      {/* Main Content */}
       <div className="flex-1 flex flex-col">
-        {/* Header */}
         <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <div className="px-6 py-4">
+          <div className="px-8 py-6">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-2xl font-bold">Company Evaluation</h1>
+                <h1 className="text-2xl font-bold tracking-tight">Company Evaluation Workspace</h1>
                 <p className="text-sm text-muted-foreground">
-                  Analyze pharmaceutical companies using advanced metrics
+                  Navigate the full evaluation flow from selection to insight in one unified view.
                 </p>
               </div>
             </div>
           </div>
         </header>
 
-        {/* Content Area */}
-        <main className="flex-1 p-6 overflow-auto">
-          <div className="max-w-6xl mx-auto">
+        <main className="flex-1 p-8 overflow-auto">
+          <div className="max-w-6xl mx-auto space-y-8">
             {renderSection()}
           </div>
         </main>
@@ -279,3 +393,5 @@ export default function EvaluatePage() {
     </div>
   )
 }
+
+

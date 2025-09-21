@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { env } from '@/lib/env'
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
